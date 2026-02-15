@@ -1,16 +1,22 @@
-# React + Vite
+# Recipe Website
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React application built with Vite that allows users to search for recipes using the Spoonacular API.
 
-Currently, two official plugins are available:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+- Search recipes by ingredients or keywords
+- Filter by cuisine type
+- View detailed recipe information including ingredients and cooking instructions
+- Pagination for search results (5 per page)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Getting Started
 
-## Expanding the ESLint configuration
+1. Create an account at [Spoonacular](https://spoonacular.com/food-api)
+2. Copy `.example.env` to `.env` and add your Spoonacular API key
+3. Install dependencies: `pnpm install`
+4. Start development server: `pnpm dev`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## API
+
+This project uses the [Spoonacular Food API](https://spoonacular.com/food-api/docs) for recipe data.
