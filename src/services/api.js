@@ -25,6 +25,25 @@ export const searchRecipes = async (query, cuisine, offset = 0) => {
 };
 
 /**
+ * Find recipes by a list of available ingredients
+ * @param {string} ingredients - Comma-separated ingredient list
+ * @param {number} [limit=24] - Max number of recipes to return
+ */
+export const findRecipesByIngredients = async (ingredients, limit = 24) => {
+  const response = await axios.get(`${BASE_URL}/recipes/findByIngredients`, {
+    params: {
+      apiKey: API_KEY,
+      ingredients,
+      number: limit,
+      ranking: 1,
+      ignorePantry: true,
+    },
+  });
+
+  return response.data;
+};
+
+/**
  * Get recipe details 
  * @param {number} id - Recipe ID
  */

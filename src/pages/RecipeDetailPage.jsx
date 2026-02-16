@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getRecipeDetails } from '../services/api';
+import { getApiErrorMessage } from '../utils/apiError';
 
 // Possible image sizes from Spoonacular API to solve image loading issues
 const SPOONACULAR_IMAGE_SIZES = ['636x393', '556x370', '480x360', '312x231'];
@@ -63,7 +64,9 @@ function RecipeDetailPage() {
         const data = await getRecipeDetails(id);
         setRecipe(data);
       } catch (err) {
-        setError('Failed to load recipe details');
+        setError(
+          getApiErrorMessage(err, 'Impossible de charger les details de la recette.')
+        );
         console.error(err);
       } finally {
         setLoading(false);

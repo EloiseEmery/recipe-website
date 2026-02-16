@@ -1,8 +1,8 @@
 import { CUISINES } from '../constants/cuisines';
 
-function FilterCuisine({ value, onChange }) {
+function FilterCuisine({ value, onChange, disabled = false }) {
   return (
-    <div className="relative w-full sm:max-w-xs">
+    <div className="relative w-full lg:max-w-xs">
       <label htmlFor="cuisine-filter" className="sr-only">
         Filter by cuisine
       </label>
@@ -10,7 +10,8 @@ function FilterCuisine({ value, onChange }) {
         id="cuisine-filter"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-12 w-full appearance-none rounded-2xl border border-amber-200/80 bg-white px-4 pr-11 text-sm font-medium text-stone-700 shadow-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+        disabled={disabled}
+        className="h-12 w-full appearance-none rounded-2xl border border-amber-200/80 bg-white px-4 pr-11 text-sm font-medium text-stone-700 shadow-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-400"
       >
         <option value="">All Cuisines</option>
         {CUISINES.map((cuisine) => (
