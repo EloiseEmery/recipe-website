@@ -1,14 +1,51 @@
 import { Link } from 'react-router-dom';
 
 function RecipeCard({ recipe }) {
+  const hasCookTime =
+    Number.isFinite(recipe.readyInMinutes) && recipe.readyInMinutes > 0;
+  const hasServings = Number.isFinite(recipe.servings) && recipe.servings > 0;
+  const hasMetadata = hasCookTime || hasServings || recipe.vegetarian;
+
   return (
-    <Link to={`/recipe/${recipe.id}`} className="">
-      <img 
-        src={recipe.image} 
-        alt={recipe.title}
-        className=""
-      />
-      <h3 className="">{recipe.title}</h3>
+    <Link
+      to={`/recipe/${recipe.id}`}
+      className="group block overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
+    >
+      <div className="relative aspect-[4/3] overflow-hidden bg-stone-100">
+        <img
+          src={recipe.image}
+          alt={recipe.title}
+          loading="lazy"
+          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-stone-950/30 to-transparent" />
+      </div>
+
+      <div className="space-y-3 p-4 sm:p-5">
+        <h3 className="min-h-12 text-lg font-semibold leading-snug tracking-tight text-stone-900 transition group-hover:text-amber-700">
+          {recipe.title}
+        </h3>
+
+        {hasMetadata && (
+          <div className="flex flex-wrap gap-2 text-xs font-medium text-stone-700">
+            {hasCookTime && (
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">
+                {recipe.readyInMinutes} min
+              </span>
+            )}
+            {hasServings && (
+              <span className="rounded-full bg-stone-100 px-3 py-1 text-stone-700">
+                {recipe.servings} servings
+              </span>
+            )}
+            {recipe.vegetarian && (
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-900">
+                Vegetarian
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </Link>
   );
 }

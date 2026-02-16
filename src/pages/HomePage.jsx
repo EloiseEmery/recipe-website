@@ -87,42 +87,101 @@ function HomePage() {
     handleSearch(query, cuisine, nextOffset);
   };
 
+  const resultCountLabel =
+    totalResults === 1 ? '1 recipe found' : `${totalResults} recipes found`;
+
   return (
-    <div>
-      <h1>Home Page</h1>
-      <div>
-        <SearchBar value={query} onChange={setQuery} onSubmit={handleSearch} />
-      </div>
-      <div>
-        <FilterCuisine value={cuisine} onChange={handleCuisineChange} />
-      </div>
+    <div className="bg-warm-radial-home min-h-screen pb-16">
+      <main className="mx-auto w-full max-w-6xl px-4 pt-10 sm:px-6 lg:px-8 lg:pt-14">
+        <header className="mx-auto max-w-3xl text-center">
+          <p className="inline-flex items-center rounded-full border border-amber-200 bg-white/80 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-800 shadow-sm">
+            Kitchen journal
+          </p>
+          <h1 className="mt-5 font-display text-4xl leading-tight tracking-tight text-stone-900 sm:text-5xl lg:text-6xl">
+            Find delicious recipes for everyday cooking
+          </h1>
+          <p className="mt-4 text-sm leading-relaxed text-stone-600 sm:text-base">
+            Search by dish name, ingredient, or cuisine to discover your next
+            meal.
+          </p>
+        </header>
 
-      {/* Loading and error states */}
-      {isLoading && <p>Loading...</p>}
-      {!isLoading && error && <p>{error}</p>}
-
-      {/* No results */}
-      {!isLoading && !error && hasSearched && results.length === 0 && (
-        <p>No recipe found.</p>
-      )}
-
-      {/* Results */}
-      {!isLoading && !error && results.length > 0 && (
-        <div>
-          <div className="">
-            {results.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
-            ))}
+        <section className="mt-10 rounded-3xl border border-white/80 bg-white/85 p-4 shadow-[0_20px_45px_-28px_rgba(41,37,36,0.45)] backdrop-blur sm:p-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <SearchBar value={query} onChange={setQuery} onSubmit={handleSearch} />
+            <FilterCuisine value={cuisine} onChange={handleCuisineChange} />
           </div>
-          <Pagination
-            totalResults={totalResults}
-            offset={offset}
-            pageSize={pageSize}
-            onPageChange={handlePageChange}
-            isDisabled={isLoading}
-          />
-        </div>
-      )}
+        </section>
+
+        {/* Loading and error states */}
+        {isLoading && (
+          <div className="mt-10 rounded-3xl border border-amber-200 bg-amber-50/80 p-8 text-center shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
+              Loading
+            </p>
+            <p className="mt-2 text-lg font-semibold text-stone-800">
+              Finding delicious matches for you...
+            </p>
+          </div>
+        )}
+
+        {!isLoading && error && (
+          <div className="mt-10 rounded-3xl border border-red-200 bg-red-50 p-6 text-center text-red-700 shadow-sm">
+            {error}
+          </div>
+        )}
+
+        {!isLoading && !error && !hasSearched && (
+          <div className="mt-10 rounded-3xl border border-stone-200 bg-white/90 p-8 text-center shadow-sm">
+            <p className="font-display text-2xl text-stone-900">
+              Start with a search above
+            </p>
+            <p className="mt-2 text-sm text-stone-600">
+              Try keywords like pasta, soup, tacos, or your favorite cuisine.
+            </p>
+          </div>
+        )}
+
+        {/* No results */}
+        {!isLoading && !error && hasSearched && results.length === 0 && (
+          <div className="mt-10 rounded-3xl border border-stone-200 bg-white/90 p-8 text-center shadow-sm">
+            <p className="font-display text-2xl text-stone-900">
+              No recipes found
+            </p>
+            <p className="mt-2 text-sm text-stone-600">
+              Try a different keyword or remove the cuisine filter.
+            </p>
+          </div>
+        )}
+
+        {/* Results */}
+        {!isLoading && !error && results.length > 0 && (
+          <section className="mt-10">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+              <h2 className="font-display text-3xl tracking-tight text-stone-900">
+                Search results
+              </h2>
+              <p className="text-sm font-medium text-stone-600">
+                {resultCountLabel}
+              </p>
+            </div>
+
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {results.map((recipe) => (
+                <RecipeCard key={recipe.id} recipe={recipe} />
+              ))}
+            </div>
+
+            <Pagination
+              totalResults={totalResults}
+              offset={offset}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              isDisabled={isLoading}
+            />
+          </section>
+        )}
+      </main>
     </div>
   );
 }

@@ -1,1 +1,29 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Manrope", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-display: "Fraunces", "Georgia", serif;
+}
+
+@layer base {
+  body {
+    @apply min-h-screen bg-amber-50 text-stone-800 antialiased;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+.bg-warm-radial-home {
+  background-image:
+    radial-gradient(circle at top right, #ffedd5, transparent 45%),
+    radial-gradient(circle at top left, #fef3c7, transparent 40%);
+}
+
+.bg-warm-radial-detail {
+  background-image:
+    radial-gradient(circle at top right, #ffedd5, transparent 40%),
+    radial-gradient(circle at top left, #fef3c7, transparent 38%);
+}
