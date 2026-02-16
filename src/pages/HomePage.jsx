@@ -83,12 +83,28 @@ function HomePage() {
     handleSearch(query, selectedCuisine, 0);
   };
 
+  /**
+   * Handle page change
+   * @param {number} nextOffset - Pagination offset
+   */
   const handlePageChange = (nextOffset) => {
     handleSearch(query, cuisine, nextOffset);
   };
 
+  const handleResetFilters = () => {
+    setQuery('');
+    setCuisine('');
+    setResults([]);
+    setError('');
+    setHasSearched(false);
+    setOffset(0);
+    setTotalResults(0);
+    setPageSize(DEFAULT_PAGE_SIZE);
+  };
+
   const resultCountLabel =
     totalResults === 1 ? '1 recipe found' : `${totalResults} recipes found`;
+  const shouldShowResetButton = query.trim().length > 0 || cuisine !== '';
 
   return (
     <div className="bg-warm-radial-home min-h-screen pb-16">
@@ -110,6 +126,52 @@ function HomePage() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <SearchBar value={query} onChange={setQuery} onSubmit={handleSearch} />
             <FilterCuisine value={cuisine} onChange={handleCuisineChange} />
+            {shouldShowResetButton && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                aria-label="Reset search and filter"
+                title="Reset search and filter"
+                disabled={isLoading}
+                className="inline-flex h-12 w-full shrink-0 items-center justify-center rounded-2xl border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-700 shadow-sm transition hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-stone-200 disabled:cursor-not-allowed disabled:opacity-60 sm:w-12 sm:px-0"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="size-5"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M4 4v5h5"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M20 20v-5h-5"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M20 9a8 8 0 0 0-13.66-5L4 6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M4 15a8 8 0 0 0 13.66 5L20 18"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            )}
           </div>
         </section>
 
@@ -166,7 +228,7 @@ function HomePage() {
               </p>
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
               {results.map((recipe) => (
                 <RecipeCard key={recipe.id} recipe={recipe} />
               ))}

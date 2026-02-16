@@ -3,8 +3,14 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getRecipeDetails } from '../services/api';
 
+// Possible image sizes from Spoonacular API to solve image loading issues
 const SPOONACULAR_IMAGE_SIZES = ['636x393', '556x370', '480x360', '312x231'];
 
+/**
+ * Get recipe image candidates
+ * @param {Object} recipe - The recipe object
+ * @returns {Array} - Array of image candidates
+ */
 const getRecipeImageCandidates = (recipe) => {
   if (!recipe) {
     return [];
@@ -16,9 +22,15 @@ const getRecipeImageCandidates = (recipe) => {
     `https://spoonacular.com/recipeImages/${recipe.id}-${size}.${imageType}`,
   ]);
 
+  // Return cleaned array of unique image candidates
   return Array.from(new Set([recipe.image, ...fallbackUrls].filter(Boolean)));
 };
 
+/**
+ * Convert HTML to plain text for clean display
+ * @param {string} html - The HTML string to convert
+ * @returns {string} - The plain text string
+ */
 const toPlainText = (html) => {
   if (!html) {
     return '';
@@ -32,13 +44,19 @@ const toPlainText = (html) => {
   return parsed.body.textContent?.replace(/\s+/g, ' ').trim() || '';
 };
 
+/**
+ * Get recipe detail page
+ * @returns {JSX.Element} - The recipe detail page
+ */
 function RecipeDetailPage() {
   const { id } = useParams();
   const [recipe, setRecipe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [imageIndex, setImageIndex] = useState(0);
+  const [checkedIngredients, setCheckedIngredients] = useState({});
 
+  // Fetch recipe details
   useEffect(() => {
     const fetchRecipe = async () => {
       try {
@@ -55,8 +73,10 @@ function RecipeDetailPage() {
     fetchRecipe();
   }, [id]);
 
+  // Reset image index and checked ingredients when recipe changes
   useEffect(() => {
     setImageIndex(0);
+    setCheckedIngredients({});
   }, [recipe?.id]);
 
   const summaryText = toPlainText(recipe?.summary);
@@ -114,15 +134,34 @@ function RecipeDetailPage() {
     recipe.vegan || recipe.vegetarian || recipe.glutenFree || recipe.dairyFree;
   const instructions = recipe.instructions?.trim();
   const instructionSteps = recipe.analyzedInstructions?.[0]?.steps || [];
+  const instructionText =
+    toPlainText(instructions) ||
+    instructionSteps
+      .map((step) => step?.step?.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .join(' ');
   const hasQuickFacts =
     (Number.isFinite(recipe.readyInMinutes) && recipe.readyInMinutes > 0) ||
     (Number.isFinite(recipe.servings) && recipe.servings > 0) ||
     (Number.isFinite(recipe.healthScore) && recipe.healthScore > 0);
+  const getIngredientKey = (ingredient, index) =>
+    `${ingredient.id ?? ingredient.name}-${index}`;
 
   const handleImageError = () => {
     setImageIndex((current) =>
       current + 1 < imageCandidates.length ? current + 1 : imageCandidates.length
     );
+  };
+
+  /**
+   * Handle ingredient toggle
+   * @param {string} ingredientKey - The ingredient key
+   */
+  const handleIngredientToggle = (ingredientKey) => {
+    setCheckedIngredients((current) => ({
+      ...current,
+      [ingredientKey]: !current[ingredientKey],
+    }));
   };
 
   return (
@@ -234,17 +273,46 @@ function RecipeDetailPage() {
               Ingredients
             </h2>
             <ul className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-              {recipe.extendedIngredients?.map((ingredient, index) => (
-                <li
-                  key={`${ingredient.id ?? ingredient.name}-${index}`}
-                  className="rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3 text-stone-700"
-                >
-                  <span className="font-semibold text-stone-900">
-                    {ingredient.amount} {ingredient.unit}
-                  </span>{' '}
-                  {ingredient.name}
-                </li>
-              ))}
+              {recipe.extendedIngredients?.map((ingredient, index) => {
+                const ingredientKey = getIngredientKey(ingredient, index);
+                const isChecked = Boolean(checkedIngredients[ingredientKey]);
+
+                return (
+                  <li
+                    key={ingredientKey}
+                    className={`rounded-2xl border px-4 py-3 transition ${
+                      isChecked
+                        ? 'border-emerald-200 bg-emerald-50/70'
+                        : 'border-stone-200 bg-stone-50/80'
+                    }`}
+                  >
+                    <label
+                      htmlFor={`ingredient-checkbox-${index}`}
+                      className="flex cursor-pointer items-start gap-3"
+                    >
+                      <input
+                        id={`ingredient-checkbox-${index}`}
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => handleIngredientToggle(ingredientKey)}
+                        className="mt-1 h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                      />
+                      <span
+                        className={isChecked ? 'text-stone-500 line-through' : 'text-stone-700'}
+                      >
+                        <span
+                          className={`font-semibold ${
+                            isChecked ? 'text-stone-500' : 'text-stone-900'
+                          }`}
+                        >
+                          {ingredient.amount} {ingredient.unit}
+                        </span>{' '}
+                        {ingredient.name}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
             </ul>
           </section>
 
@@ -254,19 +322,8 @@ function RecipeDetailPage() {
               Cooking Instructions
             </h2>
 
-            {instructions ? (
-              <div
-                className="mt-4 text-sm leading-7 text-stone-700 [&_a]:font-medium [&_a]:text-amber-700 [&_a:hover]:text-amber-800 [&_li]:ml-5 [&_li]:list-disc [&_ol]:space-y-3 [&_ol]:pl-5 [&_p]:mb-3 [&_ul]:space-y-2 [&_ul]:pl-5"
-                dangerouslySetInnerHTML={{ __html: instructions }}
-              />
-            ) : instructionSteps.length > 0 ? (
-              <ol className="mt-4 space-y-3 pl-5 text-sm leading-7 text-stone-700">
-                {instructionSteps.map((step) => (
-                  <li key={step.number} className="list-decimal">
-                    {step.step}
-                  </li>
-                ))}
-              </ol>
+            {instructionText ? (
+              <p className="mt-4 text-sm leading-7 text-stone-700">{instructionText}</p>
             ) : (
               <p className="mt-4 text-sm text-stone-600">
                 No cooking instructions are available for this recipe.
