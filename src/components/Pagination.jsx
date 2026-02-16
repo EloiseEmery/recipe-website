@@ -43,7 +43,7 @@ function Pagination({
   };
 
   return (
-    <nav aria-label="Pagination" className="pagination">
+    <nav aria-label="Pagination" className="">
       <button
         type="button"
         onClick={() => goToPage(currentPage - 1)}

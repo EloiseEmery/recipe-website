@@ -5,7 +5,7 @@ function FilterCuisine({ value, onChange }) {
     <select 
       value={value} 
       onChange={(e) => onChange(e.target.value)}
-      className="filter-cuisine"
+      className=""
     >
       <option value="">All Cuisines</option>
       {CUISINES.map((cuisine) => (

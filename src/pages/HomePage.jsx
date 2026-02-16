@@ -109,7 +109,7 @@ function HomePage() {
       {/* Results */}
       {!isLoading && !error && results.length > 0 && (
         <div>
-          <div className="recipe-list">
+          <div className="">
             {results.map((recipe) => (
               <RecipeCard key={recipe.id} recipe={recipe} />
             ))}
