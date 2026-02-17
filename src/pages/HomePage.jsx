@@ -55,6 +55,11 @@ const sortIngredientsResultsByMissingIngredients = (recipes) =>
     return (firstRecipe?.title || '').localeCompare(secondRecipe?.title || '');
   });
 
+/**
+ * Get initial search state from route state
+ * @param {Object} locationState - React Router location state
+ * @returns {Object} - Normalized initial search state
+ */
 const getInitialSearchState = (locationState) => {
   const searchState = locationState?.searchState;
   const initialResults = Array.isArray(searchState?.results)
@@ -119,7 +124,7 @@ function HomePage() {
       selectedCuisine = cuisine,
       submittedIngredients = ingredientsInput,
       nextOffset = 0,
-      IngredientsMode = isIngredientsMode,
+      ingredientsMode = isIngredientsMode,
       allowEmptySearch = false,
       showSearchButtonLoading = true,
     } = {}
@@ -128,7 +133,7 @@ function HomePage() {
     const parsedIngredients = parseIngredientInput(submittedIngredients);
 
     // If Ingredients Mode is enabled, ingredients are required
-    if (IngredientsMode && parsedIngredients.length === 0) {
+    if (ingredientsMode && parsedIngredients.length === 0) {
       setError('Add at least one ingredient for Ingredients Mode.');
       setResults([]);
       setOffset(0);
@@ -139,7 +144,7 @@ function HomePage() {
     }
 
     // If no query and no cuisine, reset results and return
-    if (!IngredientsMode && !term && !selectedCuisine && !allowEmptySearch) {
+    if (!ingredientsMode && !term && !selectedCuisine && !allowEmptySearch) {
       setResults([]);
       setError('');
       setHasSearched(false);
@@ -151,7 +156,7 @@ function HomePage() {
 
     // Set loading state and clear error
     const startedAt = Date.now();
-    const loadingLabel = IngredientsMode
+    const loadingLabel = ingredientsMode
       ? parsedIngredients.slice(0, 3).join(', ') || 'your ingredients'
       : term || selectedCuisine || 'recipes';
 
@@ -162,7 +167,7 @@ function HomePage() {
 
     // Search recipes
     try {
-      if (IngredientsMode) {
+      if (ingredientsMode) {
         const data = await findRecipesByIngredients(
           parsedIngredients.join(','),
           INGREDIENTS_RESULT_LIMIT
@@ -227,7 +232,7 @@ function HomePage() {
       selectedCuisine: cuisine,
       submittedIngredients: ingredientsInput,
       nextOffset: 0,
-      IngredientsMode: isIngredientsMode,
+      ingredientsMode: isIngredientsMode,
       allowEmptySearch: !isIngredientsMode,
     });
   };
@@ -245,11 +250,15 @@ function HomePage() {
         selectedCuisine,
         submittedIngredients: ingredientsInput,
         nextOffset: 0,
-        IngredientsMode: false,
+        ingredientsMode: false,
       });
     }
   };
 
+  /**
+   * Handle ingredient mode toggle
+   * @param {boolean} enabled - Whether ingredient mode is enabled
+   */
   const handleIngredientsModeChange = (enabled) => {
     setIsIngredientsMode(enabled);
     setError('');
@@ -274,12 +283,15 @@ function HomePage() {
       selectedCuisine: cuisine,
       submittedIngredients: ingredientsInput,
       nextOffset,
-      IngredientsMode: false,
+      ingredientsMode: false,
       allowEmptySearch: true,
       showSearchButtonLoading: false,
     });
   };
 
+  /**
+   * Reset all search filters and results
+   */
   const handleResetFilters = () => {
     setQuery('');
     setIngredientsInput('');

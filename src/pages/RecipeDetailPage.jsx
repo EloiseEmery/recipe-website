@@ -62,6 +62,25 @@ function RecipeDetailPage() {
   const backToSearchLinkState = backToSearchState
     ? { searchState: backToSearchState }
     : undefined;
+  const backToSearchLabel = (
+    <>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className="size-4"
+        aria-hidden="true"
+      >
+        <path
+          d="M19 12H5m0 0 5-5m-5 5 5 5"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span className="ml-2">Back to search</span>
+    </>
+  );
 
   // Fetch recipe details
   useEffect(() => {
@@ -118,7 +137,7 @@ function RecipeDetailPage() {
             state={backToSearchLinkState}
             className="mt-6 inline-flex items-center rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
           >
-            Back to search
+            {backToSearchLabel}
           </Link>
         </div>
       </div>
@@ -135,7 +154,7 @@ function RecipeDetailPage() {
             state={backToSearchLinkState}
             className="mt-6 inline-flex items-center rounded-xl border border-stone-200 bg-stone-100 px-4 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-200"
           >
-            Back to search
+            {backToSearchLabel}
           </Link>
         </div>
       </div>
@@ -185,7 +204,7 @@ function RecipeDetailPage() {
           state={backToSearchLinkState}
           className="inline-flex items-center rounded-xl border border-stone-200 bg-white/85 px-4 py-2 text-sm font-semibold text-stone-700 shadow-sm transition hover:border-amber-300 hover:text-amber-700"
         >
-          Back to search
+          {backToSearchLabel}
         </Link>
 
         <article className="mt-6 rounded-4xl border border-white/80 bg-white/90 shadow-[0_24px_50px_-30px_rgba(41,37,36,0.45)] backdrop-blur">

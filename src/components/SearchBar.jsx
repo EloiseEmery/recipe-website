@@ -86,10 +86,8 @@ function SearchBar({
         </button>
       </div>
 
-      {/* <hr className="lg:hidden border-stone-200 my-1 "></hr> */}
-
-      <div className="">
-        <label className="cursor-pointer w-full lg:w-auto inline-flex h-12 shrink-0 items-center gap-3 rounded-2xl bg-white px-4 text-sm  text-stone-700">
+      <div>
+        <label className="cursor-pointer inline-flex h-12 w-full shrink-0 items-center gap-3 rounded-2xl bg-white px-4 text-sm text-stone-700 lg:w-auto">
           <input
             type="checkbox"
             checked={isIngredientsMode}
