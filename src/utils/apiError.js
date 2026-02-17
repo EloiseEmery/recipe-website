@@ -37,26 +37,26 @@ export const getApiErrorMessage = (error, fallbackMessage) => {
 
   if (status === 429) {
     if (retryAfter) {
-      return `Trop de requetes vers l'API. Reessaie dans ${retryAfter}s.`;
+      return `Too many requests to the API. Try again in ${retryAfter}s.`;
     }
 
-    return "Trop de requetes vers l'API. Patiente quelques secondes puis reessaie.";
+    return "Too many requests to the API. Wait a few seconds then try again.";
   }
 
   if (status === 402 || isQuotaError) {
-    return 'Quota API atteint. Reessaie plus tard ou utilise une cle API avec plus de credits.';
+    return 'API quota reached. Try again later or use an API key with more credits.';
   }
 
   if (status === 401 || (status === 403 && isApiKeyError)) {
-    return 'Cle API invalide ou manquante. Verifie VITE_SPOONACULAR_API_KEY.';
+    return 'Invalid or missing API key. Check VITE_SPOONACULAR_API_KEY.';
   }
 
   if (status >= 500) {
-    return 'Le service Spoonacular est indisponible pour le moment. Reessaie plus tard.';
+    return 'Spoonacular service is currently unavailable. Try again later.';
   }
 
   if (!error?.response && error?.request) {
-    return "Impossible de contacter l'API. Verifie ta connexion Internet.";
+    return "Unable to contact API. Check your Internet connection.";
   }
 
   if (apiMessage) {
