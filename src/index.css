@@ -1,14 +1,16 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Manrope", "Segoe UI", "Helvetica Neue", sans-serif;
-  --font-display: "Fraunces", "Georgia", serif;
+  --font-sans: "Figtree", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-display: "Figtree", "Segoe UI", "Helvetica Neue", sans-serif;
+  --breakpoint-xxs: 23.4375rem; /* 375px */
+  --breakpoint-xs: 30rem; /* 480px */
 }
 
 @layer base {
   body {
-    @apply min-h-screen bg-amber-50 text-stone-800 antialiased;
+    @apply min-h-screen bg-amber-50 text-stone-800 antialiased font-sans;
   }
 
   #root {
@@ -26,4 +28,87 @@
   background-image:
     radial-gradient(circle at top right, #ffedd5, transparent 40%),
     radial-gradient(circle at top left, #fef3c7, transparent 38%);
+}
+
+.search-panel-loading {
+  opacity: 0.9;
+}
+
+@keyframes fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+
+  50% {
+    transform: scale(1.07);
+    opacity: 1;
+  }
+}
+
+.animate-fade-rise {
+  animation: fade-rise 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-card-rise {
+  animation: card-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    105deg,
+    rgb(245 245 244) 14%,
+    rgb(255 255 255) 42%,
+    rgb(245 245 244) 72%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 1.35s linear infinite;
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-rise,
+  .animate-card-rise,
+  .skeleton-shimmer,
+  .animate-soft-pulse {
+    animation: none !important;
+  }
 }

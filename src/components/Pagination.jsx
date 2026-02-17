@@ -43,7 +43,7 @@ function Pagination({
   };
 
   const buttonClasses =
-    'inline-flex h-10 min-w-10 items-center justify-center rounded-xl border px-3 text-sm font-medium transition';
+    'cursor-pointer inline-flex h-10 min-w-10 items-center justify-center rounded-xl border px-3 text-sm font-medium transition';
   const idleClasses =
     'border-stone-200 bg-white text-stone-700 hover:border-amber-300 hover:text-amber-700';
   const activeClasses =
@@ -53,7 +53,7 @@ function Pagination({
   return (
     <nav
       aria-label="Pagination"
-      className="mt-10 flex flex-wrap items-center justify-center gap-2"
+      className="flex flex-wrap items-center justify-center gap-2"
     >
       <button
         type="button"

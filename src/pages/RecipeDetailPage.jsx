@@ -1,6 +1,6 @@
 // src/pages/RecipeDetailPage.jsx
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useLocation, Link } from 'react-router-dom';
 import { getRecipeDetails } from '../services/api';
 import { getApiErrorMessage } from '../utils/apiError';
 
@@ -51,11 +51,17 @@ const toPlainText = (html) => {
  */
 function RecipeDetailPage() {
   const { id } = useParams();
+  const location = useLocation();
   const [recipe, setRecipe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [imageIndex, setImageIndex] = useState(0);
   const [checkedIngredients, setCheckedIngredients] = useState({});
+  const [activeMobileTab, setActiveMobileTab] = useState('ingredients');
+  const backToSearchState = location.state?.fromSearch;
+  const backToSearchLinkState = backToSearchState
+    ? { searchState: backToSearchState }
+    : undefined;
 
   // Fetch recipe details
   useEffect(() => {
@@ -80,6 +86,7 @@ function RecipeDetailPage() {
   useEffect(() => {
     setImageIndex(0);
     setCheckedIngredients({});
+    setActiveMobileTab('ingredients');
   }, [recipe?.id]);
 
   const summaryText = toPlainText(recipe?.summary);
@@ -108,6 +115,7 @@ function RecipeDetailPage() {
           <p className="font-semibold text-red-700">{error}</p>
           <Link
             to="/"
+            state={backToSearchLinkState}
             className="mt-6 inline-flex items-center rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
           >
             Back to search
@@ -124,6 +132,7 @@ function RecipeDetailPage() {
           <p className="font-semibold text-stone-800">Recipe not found</p>
           <Link
             to="/"
+            state={backToSearchLinkState}
             className="mt-6 inline-flex items-center rounded-xl border border-stone-200 bg-stone-100 px-4 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-200"
           >
             Back to search
@@ -143,6 +152,7 @@ function RecipeDetailPage() {
       .map((step) => step?.step?.replace(/\s+/g, ' ').trim())
       .filter(Boolean)
       .join(' ');
+  const ingredients = recipe.extendedIngredients || [];
   const hasQuickFacts =
     (Number.isFinite(recipe.readyInMinutes) && recipe.readyInMinutes > 0) ||
     (Number.isFinite(recipe.servings) && recipe.servings > 0) ||
@@ -172,6 +182,7 @@ function RecipeDetailPage() {
       <main className="mx-auto w-full max-w-6xl px-4 pt-8 sm:px-6 lg:px-8 lg:pt-10">
         <Link
           to="/"
+          state={backToSearchLinkState}
           className="inline-flex items-center rounded-xl border border-stone-200 bg-white/85 px-4 py-2 text-sm font-semibold text-stone-700 shadow-sm transition hover:border-amber-300 hover:text-amber-700"
         >
           Back to search
@@ -179,7 +190,7 @@ function RecipeDetailPage() {
 
         <article className="mt-6 rounded-4xl border border-white/80 bg-white/90 shadow-[0_24px_50px_-30px_rgba(41,37,36,0.45)] backdrop-blur">
           <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="relative aspect-4/3 overflow-hidden rounded-t-4xl bg-stone-100 lg:h-full lg:aspect-auto lg:rounded-l-4xl lg:rounded-tr-none">
+            <div className="relative aspect-video overflow-hidden rounded-t-4xl bg-stone-100 lg:h-full lg:aspect-auto lg:rounded-l-4xl lg:rounded-tr-none">
               {currentImageUrl ? (
                 <>
                   <img
@@ -234,49 +245,142 @@ function RecipeDetailPage() {
                     )}
                 </div>
               )}
+
+              {hasHealthInfo && (
+                <div>
+                  <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+                    Health Information
+                  </h2>
+                  <div className="mt-3 flex flex-wrap gap-2 text-sm font-semibold">
+                    {recipe.vegan && (
+                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-900">
+                        Vegan
+                      </span>
+                    )}
+                    {recipe.vegetarian && (
+                      <span className="rounded-full bg-lime-100 px-3 py-1 text-lime-900">
+                        Vegetarian
+                      </span>
+                    )}
+                    {recipe.glutenFree && (
+                      <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-900">
+                        Gluten Free
+                      </span>
+                    )}
+                    {recipe.dairyFree && (
+                      <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-900">
+                        Dairy Free
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </article>
 
-        {/* Health Information */}
-        {hasHealthInfo && (
-          <section className="mt-6 rounded-3xl border border-stone-200 bg-white/90 p-6 shadow-sm">
-            <h2 className="font-display text-2xl tracking-tight text-stone-900">
-              Health Information
-            </h2>
-            <div className="mt-4 flex flex-wrap gap-2 text-sm font-semibold">
-              {recipe.vegan && (
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-900">
-                  Vegan
-                </span>
-              )}
-              {recipe.vegetarian && (
-                <span className="rounded-full bg-lime-100 px-3 py-1 text-lime-900">
-                  Vegetarian
-                </span>
-              )}
-              {recipe.glutenFree && (
-                <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-900">
-                  Gluten Free
-                </span>
-              )}
-              {recipe.dairyFree && (
-                <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-900">
-                  Dairy Free
-                </span>
-              )}
-            </div>
-          </section>
-        )}
+        <section className="mt-6 overflow-hidden rounded-3xl border border-stone-200 bg-white/90 shadow-sm lg:hidden">
+          <div className="grid grid-cols-2 border-b border-stone-200 bg-stone-100/70">
+            <button
+              type="button"
+              onClick={() => setActiveMobileTab('ingredients')}
+              className={`px-4 py-3 text-sm font-semibold transition ${
+                activeMobileTab === 'ingredients'
+                  ? 'bg-amber-100 text-amber-900'
+                  : 'text-stone-600 hover:bg-stone-200/80'
+              }`}
+              aria-pressed={activeMobileTab === 'ingredients'}
+            >
+              Ingredients
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveMobileTab('instructions')}
+              className={`px-4 py-3 text-sm font-semibold transition ${
+                activeMobileTab === 'instructions'
+                  ? 'bg-amber-100 text-amber-900'
+                  : 'text-stone-600 hover:bg-stone-200/80'
+              }`}
+              aria-pressed={activeMobileTab === 'instructions'}
+            >
+              Cooking Instructions
+            </button>
+          </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          <div className="p-6">
+            {activeMobileTab === 'ingredients' ? (
+              <>
+                <h2 className="font-display text-2xl tracking-tight text-stone-900">
+                  Ingredients
+                </h2>
+                <ul className="mt-4 grid gap-3 text-sm">
+                  {ingredients.map((ingredient, index) => {
+                    const ingredientKey = getIngredientKey(ingredient, index);
+                    const isChecked = Boolean(checkedIngredients[ingredientKey]);
+
+                    return (
+                      <li
+                        key={ingredientKey}
+                        className={`rounded-2xl border px-4 py-3 transition ${
+                          isChecked
+                            ? 'border-emerald-200 bg-emerald-50/70'
+                            : 'border-stone-200 bg-stone-50/80'
+                        }`}
+                      >
+                        <label
+                          htmlFor={`ingredient-checkbox-mobile-${index}`}
+                          className="flex cursor-pointer items-start gap-3"
+                        >
+                          <input
+                            id={`ingredient-checkbox-mobile-${index}`}
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleIngredientToggle(ingredientKey)}
+                            className="mt-1 h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                          />
+                          <span
+                            className={isChecked ? 'text-stone-500 line-through' : 'text-stone-700'}
+                          >
+                            <span
+                              className={`font-semibold ${
+                                isChecked ? 'text-stone-500' : 'text-stone-900'
+                              }`}
+                            >
+                              {ingredient.amount} {ingredient.unit}
+                            </span>{' '}
+                            {ingredient.name}
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            ) : (
+              <>
+                <h2 className="font-display text-2xl tracking-tight text-stone-900">
+                  Cooking Instructions
+                </h2>
+                {instructionText ? (
+                  <p className="mt-4 text-sm leading-7 text-stone-700">{instructionText}</p>
+                ) : (
+                  <p className="mt-4 text-sm text-stone-600">
+                    No cooking instructions are available for this recipe.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+
+        <div className="mt-6 hidden gap-6 lg:grid lg:grid-cols-3">
           {/* Ingredients */}
           <section className="rounded-3xl border border-stone-200 bg-white/90 p-6 shadow-sm">
             <h2 className="font-display text-2xl tracking-tight text-stone-900">
               Ingredients
             </h2>
             <ul className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-              {recipe.extendedIngredients?.map((ingredient, index) => {
+              {ingredients.map((ingredient, index) => {
                 const ingredientKey = getIngredientKey(ingredient, index);
                 const isChecked = Boolean(checkedIngredients[ingredientKey]);
 

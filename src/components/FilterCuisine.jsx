@@ -1,13 +1,18 @@
 import { CUISINES } from '../constants/cuisines';
 
-function FilterCuisine({ value, onChange, disabled = false }) {
+function FilterCuisine({
+  value,
+  onChange,
+  disabled = false,
+  id = 'cuisine-filter',
+}) {
   return (
     <div className="relative w-full lg:max-w-xs">
-      <label htmlFor="cuisine-filter" className="sr-only">
+      <label htmlFor={id} className="sr-only">
         Filter by cuisine
       </label>
       <select
-        id="cuisine-filter"
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
 import FilterCuisine from '../components/FilterCuisine';
 import RecipeCard from '../components/RecipeCard';
@@ -7,8 +8,15 @@ import { searchRecipes, findRecipesByIngredients } from '../services/api';
 import { getApiErrorMessage } from '../utils/apiError';
 
 const DEFAULT_PAGE_SIZE = 5;
-const FRIDGE_RESULT_LIMIT = 24;
+const INGREDIENTS_RESULT_LIMIT = 10;
+const MIN_LOADING_DURATION_MS = 260;
+const SKELETON_CARD_COUNT = 5;
 
+/**
+ * Parse ingredient input
+ * @param {string} value - Ingredient input value
+ * @returns {Array} - Array of unique ingredients
+ */
 const parseIngredientInput = (value) =>
   Array.from(
     new Set(
@@ -19,12 +27,22 @@ const parseIngredientInput = (value) =>
     )
   );
 
+/**
+ * Get missing ingredient count
+ * @param {Object} recipe - Recipe object
+ * @returns {number} - Missing ingredient count
+ */
 const getMissingIngredientCount = (recipe) =>
   Number.isFinite(recipe?.missedIngredientCount)
     ? recipe.missedIngredientCount
     : Number.MAX_SAFE_INTEGER;
 
-const sortFridgeResultsByMissingIngredients = (recipes) =>
+/**
+ * Sort recipes by missing ingredients count
+ * @param {Array} recipes - Array of recipes
+ * @returns {Array} - Sorted array of recipes
+ */
+const sortIngredientsResultsByMissingIngredients = (recipes) =>
   [...recipes].sort((firstRecipe, secondRecipe) => {
     const missingDiff =
       getMissingIngredientCount(firstRecipe) -
@@ -37,18 +55,59 @@ const sortFridgeResultsByMissingIngredients = (recipes) =>
     return (firstRecipe?.title || '').localeCompare(secondRecipe?.title || '');
   });
 
+const getInitialSearchState = (locationState) => {
+  const searchState = locationState?.searchState;
+  const initialResults = Array.isArray(searchState?.results)
+    ? searchState.results
+    : [];
+
+  return {
+    query: typeof searchState?.query === 'string' ? searchState.query : '',
+    ingredientsInput:
+      typeof searchState?.ingredientsInput === 'string'
+        ? searchState.ingredientsInput
+        : '',
+    isIngredientsMode: Boolean(searchState?.isIngredientsMode),
+    results: initialResults,
+    hasSearched: Boolean(searchState?.hasSearched),
+    cuisine: typeof searchState?.cuisine === 'string' ? searchState.cuisine : '',
+    offset:
+      Number.isInteger(searchState?.offset) && searchState.offset >= 0
+        ? searchState.offset
+        : 0,
+    totalResults:
+      Number.isInteger(searchState?.totalResults) && searchState.totalResults >= 0
+        ? searchState.totalResults
+        : initialResults.length,
+    pageSize:
+      Number.isInteger(searchState?.pageSize) && searchState.pageSize > 0
+        ? searchState.pageSize
+        : DEFAULT_PAGE_SIZE,
+  };
+};
+
 function HomePage() {
-  const [query, setQuery] = useState('');
-  const [ingredientsInput, setIngredientsInput] = useState('');
-  const [isFridgeMode, setIsFridgeMode] = useState(false);
-  const [results, setResults] = useState([]);
+  const location = useLocation();
+  const initialSearchState = getInitialSearchState(location.state);
+
+  const [query, setQuery] = useState(initialSearchState.query);
+  const [ingredientsInput, setIngredientsInput] = useState(
+    initialSearchState.ingredientsInput
+  );
+  const [isIngredientsMode, setIsIngredientsMode] = useState(
+    initialSearchState.isIngredientsMode
+  );
+  const [results, setResults] = useState(initialSearchState.results);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [hasSearched, setHasSearched] = useState(false);
-  const [cuisine, setCuisine] = useState('');
-  const [offset, setOffset] = useState(0);
-  const [totalResults, setTotalResults] = useState(0);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [hasSearched, setHasSearched] = useState(initialSearchState.hasSearched);
+  const [cuisine, setCuisine] = useState(initialSearchState.cuisine);
+  const [offset, setOffset] = useState(initialSearchState.offset);
+  const [totalResults, setTotalResults] = useState(initialSearchState.totalResults);
+  const [pageSize, setPageSize] = useState(initialSearchState.pageSize);
+  const [resultsTransitionKey, setResultsTransitionKey] = useState(0);
+  const [activeSearchLabel, setActiveSearchLabel] = useState('recipes');
+  const [isPageChangeLoading, setIsPageChangeLoading] = useState(false);
 
   /**
    * Handle search submission
@@ -60,15 +119,17 @@ function HomePage() {
       selectedCuisine = cuisine,
       submittedIngredients = ingredientsInput,
       nextOffset = 0,
-      fridgeMode = isFridgeMode,
+      IngredientsMode = isIngredientsMode,
+      allowEmptySearch = false,
+      showSearchButtonLoading = true,
     } = {}
   ) => {
     const term = submittedQuery.trim();
     const parsedIngredients = parseIngredientInput(submittedIngredients);
 
-    // If Fridge Mode is enabled, ingredients are required
-    if (fridgeMode && parsedIngredients.length === 0) {
-      setError('Add at least one ingredient for Fridge Mode.');
+    // If Ingredients Mode is enabled, ingredients are required
+    if (IngredientsMode && parsedIngredients.length === 0) {
+      setError('Add at least one ingredient for Ingredients Mode.');
       setResults([]);
       setOffset(0);
       setTotalResults(0);
@@ -78,7 +139,7 @@ function HomePage() {
     }
 
     // If no query and no cuisine, reset results and return
-    if (!fridgeMode && !term && !selectedCuisine) {
+    if (!IngredientsMode && !term && !selectedCuisine && !allowEmptySearch) {
       setResults([]);
       setError('');
       setHasSearched(false);
@@ -89,17 +150,24 @@ function HomePage() {
     }
 
     // Set loading state and clear error
+    const startedAt = Date.now();
+    const loadingLabel = IngredientsMode
+      ? parsedIngredients.slice(0, 3).join(', ') || 'your ingredients'
+      : term || selectedCuisine || 'recipes';
+
     setIsLoading(true);
+    setIsPageChangeLoading(!showSearchButtonLoading);
     setError('');
+    setActiveSearchLabel(loadingLabel);
 
     // Search recipes
     try {
-      if (fridgeMode) {
+      if (IngredientsMode) {
         const data = await findRecipesByIngredients(
           parsedIngredients.join(','),
-          FRIDGE_RESULT_LIMIT
+          INGREDIENTS_RESULT_LIMIT
         );
-        const nextResults = sortFridgeResultsByMissingIngredients(
+        const nextResults = sortIngredientsResultsByMissingIngredients(
           Array.isArray(data) ? data : []
         );
 
@@ -138,8 +206,18 @@ function HomePage() {
       setResults([]);
       setTotalResults(0);
     } finally {
+      const elapsed = Date.now() - startedAt;
+
+      if (elapsed < MIN_LOADING_DURATION_MS) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, MIN_LOADING_DURATION_MS - elapsed);
+        });
+      }
+
       setHasSearched(true);
       setIsLoading(false);
+      setIsPageChangeLoading(false);
+      setResultsTransitionKey((currentKey) => currentKey + 1);
     }
   };
 
@@ -149,7 +227,8 @@ function HomePage() {
       selectedCuisine: cuisine,
       submittedIngredients: ingredientsInput,
       nextOffset: 0,
-      fridgeMode: isFridgeMode,
+      IngredientsMode: isIngredientsMode,
+      allowEmptySearch: !isIngredientsMode,
     });
   };
 
@@ -160,19 +239,19 @@ function HomePage() {
   const handleCuisineChange = (selectedCuisine) => {
     setCuisine(selectedCuisine);
 
-    if (!isFridgeMode) {
+    if (!isIngredientsMode) {
       handleSearch({
         submittedQuery: query,
         selectedCuisine,
         submittedIngredients: ingredientsInput,
         nextOffset: 0,
-        fridgeMode: false,
+        IngredientsMode: false,
       });
     }
   };
 
-  const handleFridgeModeChange = (enabled) => {
-    setIsFridgeMode(enabled);
+  const handleIngredientsModeChange = (enabled) => {
+    setIsIngredientsMode(enabled);
     setError('');
     setResults([]);
     setHasSearched(false);
@@ -195,14 +274,16 @@ function HomePage() {
       selectedCuisine: cuisine,
       submittedIngredients: ingredientsInput,
       nextOffset,
-      fridgeMode: false,
+      IngredientsMode: false,
+      allowEmptySearch: true,
+      showSearchButtonLoading: false,
     });
   };
 
   const handleResetFilters = () => {
     setQuery('');
     setIngredientsInput('');
-    setIsFridgeMode(false);
+    setIsIngredientsMode(false);
     setCuisine('');
     setResults([]);
     setError('');
@@ -215,49 +296,84 @@ function HomePage() {
   const readyToCookCount = results.filter(
     (recipe) => recipe.missedIngredientCount === 0
   ).length;
-  const resultCountLabel = isFridgeMode
+  const resultCountLabel = isIngredientsMode
     ? `${readyToCookCount} ready to cook | ${totalResults} matches`
     : totalResults === 1
       ? '1 recipe found'
       : `${totalResults} recipes found`;
+  const searchStateSnapshot = {
+    query,
+    ingredientsInput,
+    isIngredientsMode,
+    results,
+    hasSearched,
+    cuisine,
+    offset,
+    totalResults,
+    pageSize,
+  };
   const shouldShowResetButton =
+    hasSearched ||
     query.trim().length > 0 ||
     cuisine !== '' ||
     ingredientsInput.trim().length > 0 ||
-    isFridgeMode;
+    isIngredientsMode;
+  const isSearchControlLoading = isLoading && !isPageChangeLoading;
 
   return (
     <div className="bg-warm-radial-home min-h-screen pb-16">
       <main className="mx-auto w-full max-w-6xl px-4 pt-10 sm:px-6 lg:px-8 lg:pt-14">
         <header className="mx-auto max-w-3xl text-center">
-          <p className="inline-flex items-center rounded-full border border-amber-200 bg-white/80 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-800 shadow-sm">
-            Kitchen journal
-          </p>
           <h1 className="mt-5 font-display text-4xl leading-tight tracking-tight text-stone-900 sm:text-5xl lg:text-6xl">
             Find delicious recipes for everyday cooking
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-stone-600 sm:text-base">
-            Search by dish name, ingredient, or cuisine to discover your next
+            Search by recipe name, cuisine, or ingredient to discover your next
             meal.
           </p>
         </header>
 
-        <section className="mt-10 rounded-3xl border border-white/80 bg-white/85 p-4 shadow-[0_20px_45px_-28px_rgba(41,37,36,0.45)] backdrop-blur sm:p-6 relative">
+        <section
+          className={`mt-10 rounded-3xl border border-white/80 bg-white/85 p-4 shadow-[0_20px_45px_-28px_rgba(41,37,36,0.45)] backdrop-blur sm:p-6 relative transition-opacity duration-300 ${
+            isSearchControlLoading ? 'search-panel-loading' : ''
+          }`}
+        >
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
-            <SearchBar
-              value={query}
-              onChange={setQuery}
-              onSubmit={handleSearchSubmit}
-              isFridgeMode={isFridgeMode}
-              onFridgeModeChange={handleFridgeModeChange}
-              ingredientsValue={ingredientsInput}
-              onIngredientsChange={setIngredientsInput}
-            />
-            <FilterCuisine
-              value={cuisine}
-              onChange={handleCuisineChange}
-              disabled={isFridgeMode}
-            />
+            {!isIngredientsMode && (
+              <div className="hidden lg:block lg:order-2">
+                <FilterCuisine
+                  id="cuisine-filter-desktop"
+                  value={cuisine}
+                  onChange={handleCuisineChange}
+                  disabled={isIngredientsMode || isSearchControlLoading}
+                />
+              </div>
+            )}
+            <div className="order-1 lg:order-1 lg:flex-1">
+              <SearchBar
+                value={query}
+                onChange={setQuery}
+                onSubmit={handleSearchSubmit}
+                isIngredientsMode={isIngredientsMode}
+                onIngredientsModeChange={handleIngredientsModeChange}
+                ingredientsValue={ingredientsInput}
+                onIngredientsChange={setIngredientsInput}
+                isLoading={isSearchControlLoading}
+                isButtonLoading={isSearchControlLoading}
+                mobileCuisineFilter={
+                  !isIngredientsMode ? (
+                    <div className="lg:hidden w-full">
+                      <FilterCuisine
+                        id="cuisine-filter-mobile"
+                        value={cuisine}
+                        onChange={handleCuisineChange}
+                        disabled={isIngredientsMode || isSearchControlLoading}
+                      />
+                    </div>
+                  ) : null
+                }
+              />
+            </div>
           </div>
           
           {/* Reset button - absolute position on desktop, full width on mobile */}
@@ -267,8 +383,8 @@ function HomePage() {
               onClick={handleResetFilters}
               aria-label="Reset search and filter"
               title="Reset search and filter"
-              disabled={isLoading}
-              className="cursor-pointer lg:absolute lg:bottom-4 lg:right-4 lg:h-10 lg:w-10 mt-3 lg:mt-0 inline-flex h-12 w-full items-center justify-center rounded-full lg:rounded-full border border-stone-300 bg-white px-5 lg:px-2 text-sm font-semibold text-stone-700 shadow-md transition hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-200 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSearchControlLoading}
+              className="cursor-pointer lg:absolute lg:bottom-4 lg:right-4 lg:h-10 lg:w-auto mt-3 lg:mt-0 inline-flex h-12 w-full items-center justify-center rounded-full border border-stone-300 bg-white px-5 lg:px-4 text-sm font-semibold text-stone-700 shadow-md transition hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-200 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -277,78 +393,131 @@ function HomePage() {
                 aria-hidden="true"
               >
                 <path
-                  d="M4 4v5h5"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M20 20v-5h-5"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M20 9a8 8 0 0 0-13.66-5L4 6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M4 15a8 8 0 0 0 13.66 5L20 18"
+                  d="M19 12H5m0 0 5-5m-5 5 5 5"
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               </svg>
-              <span className="ml-2 lg:hidden">Reset</span>
-              <span className="sr-only lg:sr-only">Reset</span>
+            
+              <span className="ml-2">Clear search</span>
             </button>
           )}
         </section>
 
         {/* Loading and error states */}
         {isLoading && (
-          <div className="mt-10 rounded-3xl border border-amber-200 bg-amber-50/80 p-8 text-center shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
-              Loading
-            </p>
-            <p className="mt-2 text-lg font-semibold text-stone-800">
-              Finding delicious matches for you...
-            </p>
-          </div>
+          <section
+            aria-live="polite"
+            className="mt-10 animate-fade-rise rounded-3xl border border-amber-200/80 bg-white/92 p-6 shadow-sm sm:p-8"
+          >
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
+                  Searching
+                </p>
+                <p className="mt-2 text-lg font-semibold text-stone-800">
+                  Finding delicious matches for "{activeSearchLabel}"...
+                </p>
+              </div>
+              <span className="inline-flex size-9 items-center justify-center rounded-full bg-amber-100 text-amber-700 animate-soft-pulse">
+                <span className="size-3 rounded-full bg-amber-500" />
+              </span>
+            </div>
+
+            <div className="grid gap-5 xxs:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+              {Array.from({ length: SKELETON_CARD_COUNT }).map(
+                (_, skeletonIndex) => (
+                  <article
+                    key={`skeleton-${skeletonIndex}`}
+                    className="animate-card-rise overflow-hidden rounded-3xl border border-stone-200/90 bg-white p-4 shadow-sm"
+                    style={{ animationDelay: `${skeletonIndex * 70}ms` }}
+                  >
+                    <div className="skeleton-shimmer aspect-4xl rounded-2xl" />
+                    <div className="mt-4 space-y-2">
+                      <div className="skeleton-shimmer h-3 rounded-full" />
+                      <div className="skeleton-shimmer h-3 w-4/5 rounded-full" />
+                      <div className="mt-3 flex gap-2">
+                        <div className="skeleton-shimmer h-6 w-20 rounded-full" />
+                        <div className="skeleton-shimmer h-6 w-16 rounded-full" />
+                      </div>
+                    </div>
+                  </article>
+                )
+              )}
+            </div>
+          </section>
         )}
 
         {!isLoading && error && (
-          <div className="mt-10 rounded-3xl border border-red-200 bg-red-50 p-6 text-center text-red-700 shadow-sm">
+          <div
+            key={`error-${resultsTransitionKey}-${error}`}
+            className="mt-10 animate-fade-rise rounded-3xl border border-red-200 bg-red-50 p-6 text-center text-red-700 shadow-sm"
+          >
             {error}
           </div>
         )}
 
         {!isLoading && !error && !hasSearched && (
-          <div className="mt-10 rounded-3xl border border-stone-200 bg-white/90 p-8 text-center shadow-sm">
-            <p className="font-display text-2xl text-stone-900">
-              Start with a search above
+          <div className="mt-10 animate-fade-rise rounded-3xl border border-stone-200/90 bg-white/95 p-6 shadow-sm sm:p-8">
+            <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+              Quick guide
             </p>
-            <p className="mt-2 text-sm text-stone-600">
-              Try keywords like pasta, soup, tacos, or enable Fridge Mode with
-              ingredients like tomato, rice, chicken.
+            <p className="mt-2 text-center font-display text-2xl text-stone-900">
+              Choose how you want to search
             </p>
+
+            <div className="mx-auto mt-6 grid max-w-3xl gap-3 text-left md:grid-cols-2">
+              <article className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                  Search by keyword or cuisine
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-stone-700">
+                  Type a dish, ingredient, or cuisine to explore matching
+                  recipes quickly. You can also use the cuisine filter to
+                  narrow down your search.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {['pasta', 'soup', 'tacos'].map((keyword) => (
+                    <span
+                      key={keyword}
+                      className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800"
+                    >
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+              </article>
+
+              <article className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                  Search by ingredients
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-stone-700">
+                  Enable Search by ingredients, then list what you already
+                  have. You will see recipes you can cook now and recipes with
+                  only a few missing items.
+                </p>
+                <p className="mt-3 text-xs font-medium text-stone-500">
+                  Example: tomato, herbs, anchovy
+                </p>
+              </article>
+            </div>
           </div>
         )}
 
         {/* No results */}
         {!isLoading && !error && hasSearched && results.length === 0 && (
-          <div className="mt-10 rounded-3xl border border-stone-200 bg-white/90 p-8 text-center shadow-sm">
+          <div
+            key={`no-results-${resultsTransitionKey}`}
+            className="mt-10 animate-fade-rise rounded-3xl border border-stone-200 bg-white/90 p-8 text-center shadow-sm"
+          >
             <p className="font-display text-2xl text-stone-900">
               No recipes found
             </p>
             <p className="mt-2 text-sm text-stone-600">
-              {isFridgeMode
+              {isIngredientsMode
                 ? 'Try adding more ingredients or removing uncommon ones.'
                 : 'Try a different keyword or remove the cuisine filter.'}
             </p>
@@ -357,34 +526,90 @@ function HomePage() {
 
         {/* Results */}
         {!isLoading && !error && results.length > 0 && (
-          <section className="mt-10">
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-              <h2 className="font-display text-3xl tracking-tight text-stone-900">
-                Search results
-              </h2>
-              <p className="text-sm font-medium text-stone-600">
-                {resultCountLabel}
-              </p>
+          <section
+            key={`results-${resultsTransitionKey}-${offset}`}
+            className="mt-10 animate-fade-rise"
+          >
+            <div
+              className={`mb-10 items-center gap-3 ${
+                isIngredientsMode
+                  ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-6'
+                  : 'sm:flex sm:items-center sm:justify-between sm:gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-6'
+              }`}
+            >
+              {isIngredientsMode ? (
+                <>
+                  <h2 className="font-display pb-2 text-3xl tracking-tight text-stone-900 lg:justify-self-start">
+                    Search results
+                  </h2>
+                  <p className="text-sm font-medium text-stone-600 lg:justify-self-end lg:text-right">
+                    {resultCountLabel}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="sm:flex-1 lg:justify-self-start">
+                    <h2 className="font-display text-3xl tracking-tight text-stone-900">
+                      Search results
+                    </h2>
+                    <p className="pt-1 text-sm font-medium text-stone-600 lg:hidden">
+                      {resultCountLabel}
+                    </p>
+                  </div>
+
+                  <div className="hidden sm:flex sm:shrink-0 lg:hidden">
+                    <Pagination
+                      totalResults={totalResults}
+                      offset={offset}
+                      pageSize={pageSize}
+                      onPageChange={handlePageChange}
+                      isDisabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="hidden lg:flex lg:justify-center">
+                    <Pagination
+                      totalResults={totalResults}
+                      offset={offset}
+                      pageSize={pageSize}
+                      onPageChange={handlePageChange}
+                      isDisabled={isLoading}
+                    />
+                  </div>
+
+                  <p className="hidden text-sm font-medium text-stone-600 lg:block lg:justify-self-end lg:text-right">
+                    {resultCountLabel}
+                  </p>
+                </>
+              )}
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
-              {results.map((recipe) => (
-                <RecipeCard
+            <div className="grid gap-5 xxs:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+              {results.map((recipe, recipeIndex) => (
+                <div
                   key={recipe.id}
-                  recipe={recipe}
-                  isFridgeMode={isFridgeMode}
-                />
+                  className="animate-card-rise h-full"
+                  style={{ animationDelay: `${Math.min(recipeIndex * 75, 420)}ms` }}
+                >
+                  <RecipeCard
+                    recipe={recipe}
+                    isIngredientsMode={isIngredientsMode}
+                    searchState={searchStateSnapshot}
+                  />
+                </div>
               ))}
             </div>
 
-            {!isFridgeMode && (
-              <Pagination
-                totalResults={totalResults}
-                offset={offset}
-                pageSize={pageSize}
-                onPageChange={handlePageChange}
-                isDisabled={isLoading}
-              />
+            {!isIngredientsMode && (
+              <div className="mt-6 sm:hidden">
+                <Pagination
+                  totalResults={totalResults}
+                  offset={offset}
+                  pageSize={pageSize}
+                  onPageChange={handlePageChange}
+                  isDisabled={isLoading}
+                />
+              </div>
             )}
           </section>
         )}
